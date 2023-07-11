@@ -256,6 +256,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "fastrand"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6999dc1837253364c2ebb0704ba97994bd874e8f195d665c50b7548f6ea92764"
+
+[[package]]
 name = "generic-array"
 version = "0.14.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -397,26 +403,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "phf_codegen"
-version = "0.11.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e8d39688d359e6b34654d328e262234662d16cc0f60ec8dcbe5e718709342a5a"
-dependencies = [
- "phf_generator",
- "phf_shared",
-]
-
-[[package]]
-name = "phf_generator"
-version = "0.11.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "48e4cc64c2ad9ebe670cb8fd69dd50ae301650392e81c05f9bfcb2d5bdbc24b0"
-dependencies = [
- "phf_shared",
- "rand",
-]
-
-[[package]]
 name = "phf_shared"
 version = "0.11.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -464,8 +450,8 @@ name = "predictive_shuffle"
 version = "0.1.0"
 dependencies = [
  "criterion",
+ "fastrand",
  "phf",
- "phf_codegen",
  "rand",
  "rand_chacha",
  "sha2",

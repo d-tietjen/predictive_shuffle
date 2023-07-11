@@ -2,7 +2,6 @@
 name = "predictive_shuffle"
 version = "0.1.0"
 edition = "2021"
-build = "build.rs"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -11,14 +10,11 @@ phf = { version = "0.11.1", default-features = false }
 rand = "0.8.5"
 rand_chacha = "0.3.1"
 sha2 = "0.10.7"
+fastrand = "2.0.0"
 
 [dev-dependencies]
 sha2 = "0.10.7"
 criterion = "0.5.1"
-
-[build-dependencies]
-phf = { version = "0.11.1", default-features = false }
-phf_codegen = "0.11.1"
 
 [[bench]]
 name = "benches"
