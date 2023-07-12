@@ -26,6 +26,32 @@ pub fn multi_index_shuffle_prediction(
     complete_search(size, rand, peers, vec)
 }
 
+pub fn skip_multi_index_shuffle_prediction(
+    ids: &Vec<usize>,
+    seed: &Vec<u8>,
+    size: usize,
+    randomness: f32,
+) -> HashMap<usize, usize> {
+    // seed
+    let seed = byte_array(seed);
+    let seed_int = u64::from_be_bytes(seed);
+
+    // random function
+    let mut rand: fastrand::Rng = fastrand::Rng::new();
+    rand.seed(seed_int);
+
+    // mutable structures
+    let mut vec: Vec<Option<usize>> = vec![None; size];
+    let peers = ids.len();
+
+    // fill vec
+    for i in ids {
+        vec[*i] = Some(*i)
+    }
+
+    skip_search(size, randomness, rand, peers, vec)
+}
+
 pub fn complete_search(
     size: usize,
     mut rand: fastrand::Rng,
@@ -55,17 +81,23 @@ pub fn complete_search(
 
 pub fn skip_search(
     size: usize,
-    skip: u8,
+    batch: f32,
     mut rand: fastrand::Rng,
     mut peers: usize,
     mut vec: Vec<Option<usize>>,
 ) -> HashMap<usize, usize> {
-    
-    
     // iterate over all items
     let mut new_map = HashMap::new();
+    let range = size - (size as f32 * batch) as usize;
+    let mut rand_vec = Vec::with_capacity(range);
     for i in (0..size).rev() {
-        let x: usize = rand.usize(0..=i);
+        let x: usize = if i >= range {
+            let x = rand.usize(0..=i);
+            rand_vec.push(x);
+            x
+        } else {
+            i % rand_vec[i % rand_vec.len()]
+        };
 
         if let Some(item) = vec[x] {
             new_map.insert(item, i);
