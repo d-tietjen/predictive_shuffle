@@ -1,41 +1,46 @@
 #[cfg(test)]
 
 mod tests {
+    use predictive_shuffle::Shuffle;
     use std::collections::{HashMap, HashSet};
+    #[test]
+    fn predictive_test() {
+        let mut vec: Vec<usize> = (0..100).collect();
+        let seed = b"seed phrase".to_vec();
+        let positions: Vec<usize> = vec![1, 5];
+        let shuffled_items = vec.predictive_shuffle_from_seed(positions, seed);
+        println!("{:?}", shuffled_items);
+    }
 
-    // #[test]
-    // fn collision_test() {
-    //     let size = 1000;
-    //     let seed = b"1029493 357rewqwer6r5w".to_vec();
-
-    //     let mut map = HashMap::new();
-    //     for mut index in 0..size {
-    //         index = predictive_shuffle::shuffle_prediction(index, &seed, size);
-    //         assert!(!map.contains_key(&index));
-    //         map.insert(index, ());
-    //         // println!("{int}:{index}");
-    //     }
-    // }
+    #[test]
+    fn batch_predictive_test() {
+        let mut vec: Vec<usize> = (0..100).collect();
+        let seed = b"seed phrase".to_vec();
+        let positions: Vec<usize> = vec![1, 5];
+        let batch = 4;
+        let shuffled_items = vec.batch_predictive_shuffle_from_seed(batch, positions, seed);
+        println!("{:?}", shuffled_items);
+    }
 
     #[test]
     fn collision_skip_test() {
-        let size = 1_000_000;
+        let size = 100;
         let seed = b"1029493 357rewqwer6r5w".to_vec();
-        let randomness = 1.0;
+        let factor = 8;
 
         let map = predictive_shuffle::skip_multi_index_shuffle_prediction(
             &(0..size).collect(),
             &seed,
             size,
-            randomness,
+            factor,
         );
+        println!("{map:#?}");
         assert_eq!(map.len(), size);
         let mut new_map = HashSet::new();
         for (_key, value) in map {
             assert!(!new_map.contains(&value));
             new_map.insert(value);
         }
-        // println!("{map:#?}")
     }
 
     // #[test]
