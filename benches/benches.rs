@@ -1,37 +1,143 @@
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
-// use rand::Rng;
+use predictive_shuffle::Shuffle;
 
-fn bench_shuffle(c: &mut Criterion) {
+fn bench_fastrand(c: &mut Criterion) {
     let size = 100_000;
-    let peers = (size as f32).log10() as usize;
-    let items: Vec<usize> = (0..(10 * peers)).collect();
+    let vec: Vec<usize> = (0..size).collect();
+    let positions: Vec<usize> = (0..10).collect();
     let seed = b"love item".to_vec();
-    let ordered_vec: Vec<usize> = (0..size).collect();
+    let batch = 10;
 
     let mut group: criterion::BenchmarkGroup<'_, criterion::measurement::WallTime> =
         c.benchmark_group("Shuffle");
 
     let i = &100u64;
 
-    group.bench_with_input(BenchmarkId::new("Vec Shuffle", i.to_owned()), i, |b, _i| {
-        b.iter(|| {
-            let vec = predictive_shuffle::shuffle_vec(ordered_vec.clone(), &seed, size);
-            for i in &items {
-                let _a = vec[*i];
-            }
-        })
-    });
+    group.bench_with_input(
+        BenchmarkId::new("Modern Shuffle", i.to_owned()),
+        i,
+        |b, _i| b.iter(|| vec.clone().modern_shuffle()),
+    );
 
-    group.bench_with_input(BenchmarkId::new("Multi", i.to_owned()), i, |b, _i| {
-        b.iter(|| predictive_shuffle::multi_index_shuffle_prediction(&items, &seed, size))
-    });
+    group.bench_with_input(
+        BenchmarkId::new("Modern Shuffle w/ Seed", i.to_owned()),
+        i,
+        |b, _i| b.iter(|| vec.clone().modern_shuffle_from_seed(seed.clone())),
+    );
 
-    group.bench_with_input(BenchmarkId::new("Skip Multi", i.to_owned()), i, |b, _i| {
-        b.iter(|| predictive_shuffle::skip_multi_index_shuffle_prediction(&items, &seed, size, 2))
-    });
+    group.bench_with_input(
+        BenchmarkId::new("Predictive Shuffle", i.to_owned()),
+        i,
+        |b, _i| b.iter(|| vec.clone().predictive_shuffle(positions.clone())),
+    );
+
+    group.bench_with_input(
+        BenchmarkId::new("Predictive Shuffle w/ Seed", i.to_owned()),
+        i,
+        |b, _i| {
+            b.iter(|| {
+                vec.clone()
+                    .predictive_shuffle_from_seed(positions.clone(), seed.clone())
+            })
+        },
+    );
+
+    group.bench_with_input(
+        BenchmarkId::new("Batch Predictive Shuffle", i.to_owned()),
+        i,
+        |b, _i| {
+            b.iter(|| {
+                vec.clone()
+                    .batch_predictive_shuffle(batch, positions.clone())
+            })
+        },
+    );
+
+    group.bench_with_input(
+        BenchmarkId::new("Batch Predictive Shuffle w/ Seed", i.to_owned()),
+        i,
+        |b, _i| {
+            b.iter(|| {
+                vec.clone().batch_predictive_shuffle_from_seed(
+                    batch,
+                    positions.clone(),
+                    seed.clone(),
+                )
+            })
+        },
+    );
 
     group.finish();
 }
 
-criterion_group!(benches, bench_shuffle);
+fn bench_chacha(c: &mut Criterion) {
+    let size = 100_000;
+    let vec: Vec<usize> = (0..size).collect();
+    let positions: Vec<usize> = (0..10).collect();
+    let seed = b"love item".to_vec();
+    let batch = 10;
+
+    let mut group: criterion::BenchmarkGroup<'_, criterion::measurement::WallTime> =
+        c.benchmark_group("Shuffle");
+
+    let i = &100u64;
+
+    group.bench_with_input(
+        BenchmarkId::new("Crypto Modern Shuffle", i.to_owned()),
+        i,
+        |b, _i| b.iter(|| vec.clone().crypto_modern_shuffle()),
+    );
+
+    group.bench_with_input(
+        BenchmarkId::new("Crypto Modern Shuffle w/ Seed", i.to_owned()),
+        i,
+        |b, _i| b.iter(|| vec.clone().crypto_modern_shuffle_from_seed(seed.clone())),
+    );
+
+    group.bench_with_input(
+        BenchmarkId::new("Crypto Predictive Shuffle", i.to_owned()),
+        i,
+        |b, _i| b.iter(|| vec.clone().crypto_predictive_shuffle(positions.clone())),
+    );
+
+    group.bench_with_input(
+        BenchmarkId::new("Crypto Predictive Shuffle w/ Seed", i.to_owned()),
+        i,
+        |b, _i| {
+            b.iter(|| {
+                vec.clone()
+                    .crypto_predictive_shuffle_from_seed(positions.clone(), seed.clone())
+            })
+        },
+    );
+
+    group.bench_with_input(
+        BenchmarkId::new("Crypto Batch Predictive Shuffle", i.to_owned()),
+        i,
+        |b, _i| {
+            b.iter(|| {
+                vec.clone()
+                    .crypto_batch_predictive_shuffle(batch, positions.clone())
+            })
+        },
+    );
+
+    group.bench_with_input(
+        BenchmarkId::new("Crypto Batch Predictive Shuffle w/ Seed", i.to_owned()),
+        i,
+        |b, _i| {
+            b.iter(|| {
+                vec.clone().crypto_batch_predictive_shuffle_from_seed(
+                    batch,
+                    positions.clone(),
+                    seed.clone(),
+                )
+            })
+        },
+    );
+
+    group.finish();
+}
+
+criterion_group!(benches, bench_fastrand, bench_chacha);
 criterion_main!(benches);
