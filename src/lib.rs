@@ -678,64 +678,180 @@ impl<T> Shuffle<T> for Vec<T> {
     }
 }
 
-pub fn multi_index_shuffle_prediction(
-    ids: &Vec<usize>,
-    seed: &Vec<u8>,
-    size: usize,
-) -> HashMap<usize, usize> {
-    // seed
-    let seed = byte_array(seed);
+/// Generate shuffled vector with ['fastrand::Rng']
+///
+/// ### Example
+///
+/// Basic usage:
+/// ```rust
+/// use predictive_shuffle::gen_fastrand_shuffle;
+///
+/// let size = 10;
+///
+/// let shuffled_vec = gen_fastrand_shuffle(size);
+/// ```   
+pub fn gen_fastrand_shuffle(size: usize) -> Vec<usize> {
+    let mut vec: Vec<usize> = (0..size).collect();
+    let mut rng: fastrand::Rng = fastrand::Rng::new();
+    rng.shuffle(vec.as_mut_slice());
+    vec
+}
+
+/// Generate shuffled vector with from a seed with ['fastrand::Rng']
+///
+/// ### Example
+///
+/// Basic usage:
+/// ```rust
+/// use predictive_shuffle::gen_fastrand_shuffle_from_seed;
+///
+/// let size = 10;
+/// let seed = b"seed phrase".to_vec();
+/// let shuffled_vec = gen_fastrand_shuffle_from_seed(size, seed);
+/// ```   
+pub fn gen_fastrand_shuffle_from_seed(size: usize, seed: Vec<u8>) -> Vec<usize> {
+    let mut vec: Vec<usize> = (0..size).collect();
+    let mut rng: fastrand::Rng = fastrand::Rng::new();
+    let seed = byte_array(&seed);
+    let seed_int = u64::from_be_bytes(seed);
+    rng.seed(seed_int);
+    rng.shuffle(vec.as_mut_slice());
+    vec
+}
+
+/// Generate a shuffled vector with the modern Fisher-Yates Algorithm
+///
+/// ### Example
+///
+/// Basic usage:
+/// ```rust
+/// use predictive_shuffle::gen_modern_shuffle;
+///
+/// let size = 10;
+/// let shuffled_vec = gen_modern_shuffle(10);
+/// ```   
+pub fn gen_modern_shuffle(size: usize) -> Vec<usize> {
+    let mut rng = fastrand::Rng::new();
+    let mut vec: Vec<usize> = (0..size).collect();
+    let mut new_vec = vec![];
+    for i in (0..size).rev() {
+        let x: usize = rng.usize(0..=i);
+
+        new_vec.push(vec.swap_remove(x));
+    }
+    new_vec
+}
+
+/// Implementing a crpytographic randomization algorithm ['rand_chacha::ChaCha20Rng'],
+/// to generate a shuffled vector with the modern Fisher-Yates Algorithm
+///
+/// ### Example
+///
+/// Basic usage:
+/// ```rust
+/// use predictive_shuffle::gen_crypto_modern_shuffle;
+///
+/// let size = 10;
+/// let shuffled_vec = gen_crypto_modern_shuffle(size);
+/// ```   
+pub fn gen_crypto_modern_shuffle(size: usize) -> Vec<usize> {
+    let mut vec: Vec<usize> = (0..size).collect();
+    let mut rng = ChaCha20Rng::from_entropy();
+
+    let mut new_vec = vec![];
+    for i in (0..size).rev() {
+        let x: usize = rng.gen_range(0..=i);
+
+        new_vec.push(vec.swap_remove(x));
+    }
+    new_vec
+}
+
+/// Generate a shuffled vector from a seed with the modern Fisher-Yates Algorithm
+///
+/// ### Example
+///
+/// Basic usage:
+/// ```rust
+/// use predictive_shuffle::gen_modern_shuffle_from_seed;
+///
+/// let size = 10;
+/// let seed = b"seed phrase".to_vec();
+/// let shuffled_vec = gen_modern_shuffle_from_seed(size, seed);
+/// ```   
+pub fn gen_modern_shuffle_from_seed(size: usize, seed: Vec<u8>) -> Vec<usize> {
+    let mut vec: Vec<usize> = (0..size).collect();
+    let seed = byte_array(&seed);
+
     let seed_int = u64::from_be_bytes(seed);
 
+    let mut rng = fastrand::Rng::new();
+    rng.seed(seed_int);
+
+    let mut new_vec = vec![];
+    for i in (0..size).rev() {
+        let x: usize = rng.usize(0..=i);
+
+        new_vec.push(vec.swap_remove(x));
+    }
+    new_vec
+}
+
+/// Implementing a crpytographic rnadomization algorithm ['rand_chacha::ChaCha20Rng'],
+/// shuffle a given vector from with a with the modern Fisher-Yates Algorithm
+///
+/// ### Example
+///
+/// Basic usage:
+/// ```rust
+/// use predictive_shuffle::gen_crypto_modern_shuffle_from_seed;
+///
+/// let size = 10;
+/// let seed = b"seed phrase".to_vec();
+/// let shuffled_vec = gen_crypto_modern_shuffle_from_seed(size, seed);
+/// ```  
+pub fn gen_crypto_modern_shuffle_from_seed(size: usize, seed: Vec<u8>) -> Vec<usize> {
+    let mut vec: Vec<usize> = (0..10).collect();
+    let seed = byte_array(&seed);
+
+    let seed_int = u64::from_be_bytes(seed);
+
+    let mut rng = ChaCha20Rng::seed_from_u64(seed_int);
+
+    let mut new_vec = vec![];
+    for i in (0..size).rev() {
+        let x: usize = rng.gen_range(0..=i);
+
+        new_vec.push(vec.swap_remove(x));
+    }
+    new_vec
+}
+
+/// Predict shuffled position from size and starting position(s)
+///
+/// ### Example
+///
+/// Basic usage:
+/// ```rust
+/// use predictive_shuffle::gen_predictive_shuffle;
+///
+/// let size = 100;
+/// let seed = b"seed phrase".to_vec();
+/// let positions = vec![1,5];
+/// let shuffled_vec = gen_predictive_shuffle(size, positions);
+/// ```  
+pub fn gen_predictive_shuffle(size: usize, positions: Vec<usize>) -> HashMap<usize, usize> {
     // random function
     let mut rand: fastrand::Rng = fastrand::Rng::new();
-    rand.seed(seed_int);
 
     // mutable structures
     let mut vec: Vec<Option<usize>> = vec![None; size];
-    let peers = ids.len();
+    let mut peers = positions.len();
 
     // fill vec
-    for i in ids {
-        vec[*i] = Some(*i)
+    for i in positions {
+        vec[i] = Some(i)
     }
-
-    complete_search(size, rand, peers, vec)
-}
-
-pub fn skip_multi_index_shuffle_prediction(
-    ids: &Vec<usize>,
-    seed: &Vec<u8>,
-    size: usize,
-    factor: usize,
-) -> HashMap<usize, usize> {
-    // seed
-    let seed = byte_array(seed);
-    let seed_int = u64::from_be_bytes(seed);
-
-    // random function
-    let mut rand: fastrand::Rng = fastrand::Rng::new();
-    rand.seed(seed_int);
-
-    // mutable structures
-    let mut vec: Vec<Option<usize>> = vec![None; size];
-    let peers = ids.len();
-
-    // fill vec
-    for i in ids {
-        vec[*i] = Some(*i)
-    }
-
-    skip_search(size, factor, rand, peers, vec)
-}
-
-pub fn complete_search(
-    size: usize,
-    mut rand: fastrand::Rng,
-    mut peers: usize,
-    mut vec: Vec<Option<usize>>,
-) -> HashMap<usize, usize> {
-    // iterate over all items
     let mut new_map = HashMap::new();
     for i in (0..size).rev() {
         let x: usize = rand.usize(0..=i);
@@ -743,6 +859,7 @@ pub fn complete_search(
         if let Some(item) = vec[x] {
             new_map.insert(item, i);
             peers -= 1;
+            vec[x] = None;
             if peers == 0 {
                 break;
             }
@@ -756,18 +873,201 @@ pub fn complete_search(
     new_map
 }
 
-pub fn skip_search(
+/// Predict shuffled position from size and starting position(s) with a seed
+///
+/// ### Example
+///
+/// Basic usage:
+/// ```rust
+/// use predictive_shuffle::gen_predictive_shuffle_from_seed;
+///
+/// let size = 100;
+/// let seed = b"seed phrase".to_vec();
+/// let positions = vec![1,5];
+/// let new_positions = gen_predictive_shuffle_from_seed(size, positions, seed);
+/// assert_eq!(new_positions.get(&1), Some(&79));
+/// assert_eq!(new_positions.get(&5), Some(&86));
+/// ```  
+pub fn gen_predictive_shuffle_from_seed(
     size: usize,
-    factor: usize,
-    mut rng: fastrand::Rng,
-    mut peers: usize,
-    mut vec: Vec<Option<usize>>,
+    positions: Vec<usize>,
+    seed: Vec<u8>,
 ) -> HashMap<usize, usize> {
+    // seed
+    let seed = byte_array(&seed);
+    let seed_int = u64::from_be_bytes(seed);
+
+    // random function
+    let mut rand: fastrand::Rng = fastrand::Rng::new();
+    rand.seed(seed_int);
+
+    // mutable structures
+    let mut vec: Vec<Option<usize>> = vec![None; size];
+    let mut peers = positions.len();
+
+    // fill vec
+    for i in positions {
+        vec[i] = Some(i)
+    }
+    let mut new_map = HashMap::new();
+    for i in (0..size).rev() {
+        let x: usize = rand.usize(0..=i);
+
+        if let Some(item) = vec[x] {
+            new_map.insert(item, i);
+            peers -= 1;
+            vec[x] = None;
+            if peers == 0 {
+                break;
+            }
+        }
+
+        if let Some(item) = vec[i] {
+            vec[x] = Some(item);
+            vec[i] = None
+        }
+    }
+    new_map
+}
+
+/// Predict Shuffled Position of Items
+///
+/// ### Example
+///
+/// Basic usage:
+/// ```rust
+/// use predictive_shuffle::gen_crypto_predictive_shuffle;
+///
+/// let size = 100;
+/// let seed = b"seed phrase".to_vec();
+/// let positions = vec![1,5];
+/// let shuffled_vec = gen_crypto_predictive_shuffle(size, positions);
+/// ```  
+pub fn gen_crypto_predictive_shuffle(size: usize, positions: Vec<usize>) -> HashMap<usize, usize> {
+    // random function
+    let mut rng = ChaCha20Rng::from_entropy();
+
+    // mutable structures
+    let mut vec: Vec<Option<usize>> = vec![None; size];
+    let mut peers = positions.len();
+
+    // fill vec
+    for i in positions {
+        vec[i] = Some(i)
+    }
+    let mut new_map = HashMap::new();
+    for i in (0..size).rev() {
+        let x: usize = rng.gen_range(0..=i);
+
+        if let Some(item) = vec[x] {
+            new_map.insert(item, i);
+            peers -= 1;
+            vec[x] = None;
+            if peers == 0 {
+                break;
+            }
+        }
+
+        if let Some(item) = vec[i] {
+            vec[x] = Some(item);
+            vec[i] = None
+        }
+    }
+    new_map
+}
+
+/// Predict Shuffled Position of Items from Seed
+///
+/// ### Example
+///
+/// Basic usage:
+/// ```rust
+/// use predictive_shuffle::gen_crypto_predictive_shuffle_from_seed;
+///
+/// let size = 100;
+/// let seed = b"seed phrase".to_vec();
+/// let positions = vec![1,5];
+/// let new_positions = gen_crypto_predictive_shuffle_from_seed(size, positions, seed);
+/// assert_eq!(new_positions.get(&1), Some(&8));
+/// assert_eq!(new_positions.get(&5), Some(&91));
+/// ```  
+pub fn gen_crypto_predictive_shuffle_from_seed(
+    size: usize,
+    positions: Vec<usize>,
+    seed: Vec<u8>,
+) -> HashMap<usize, usize> {
+    // seed
+    let seed = byte_array(&seed);
+    let seed_int = u64::from_be_bytes(seed);
+
+    // random function
+    let mut rng = ChaCha20Rng::seed_from_u64(seed_int);
+
+    // mutable structures
+    let mut vec: Vec<Option<usize>> = vec![None; size];
+    let mut peers = positions.len();
+
+    // fill vec
+    for i in positions {
+        vec[i] = Some(i)
+    }
+
+    let mut new_map = HashMap::new();
+    for i in (0..size).rev() {
+        let x: usize = rng.gen_range(0..i);
+
+        if let Some(item) = vec[x] {
+            new_map.insert(item, i);
+            peers -= 1;
+            vec[x] = None;
+            if peers == 0 {
+                break;
+            }
+        }
+
+        if let Some(item) = vec[i] {
+            vec[x] = Some(item);
+            vec[i] = None
+        }
+    }
+    new_map
+}
+
+/// Predict Shuffled Position of Items from Seed
+///
+/// ### Example
+///
+/// Basic usage:
+/// ```rust
+/// use predictive_shuffle::gen_batch_predictive_shuffle;
+///
+/// let size = 100;
+/// let batch = 4;
+/// let positions = vec![1,5];
+/// let new_positions = gen_batch_predictive_shuffle(size, batch, positions);
+/// ```  
+pub fn gen_batch_predictive_shuffle(
+    size: usize,
+    batch: usize,
+    positions: Vec<usize>,
+) -> HashMap<usize, usize> {
+    // random function
+    let mut rand: fastrand::Rng = fastrand::Rng::new();
+
+    // mutable structures
+    let mut vec: Vec<Option<usize>> = vec![None; size];
+    let mut peers = positions.len();
+
+    // fill vec
+    for i in positions {
+        vec[i] = Some(i)
+    }
+
     // iterate over all items
     let mut new_map = HashMap::new();
-    let range = size / factor;
+    let range = size / batch;
     let mut randoms: Vec<usize> = (0..range).collect();
-    rng.shuffle(randoms.as_mut_slice());
+    rand.shuffle(randoms.as_mut_slice());
     for i in (0..size).rev() {
         let x: usize = if i == 0 {
             0
@@ -778,6 +1078,207 @@ pub fn skip_search(
         if let Some(item) = vec[x] {
             new_map.insert(item, i);
             peers -= 1;
+            vec[x] = None;
+            if peers == 0 {
+                break;
+            }
+        }
+
+        if let Some(item) = vec[i] {
+            vec[x] = Some(item);
+            vec[i] = None
+        }
+    }
+    new_map
+}
+
+/// Predict Shuffled Position of Items from Seed
+///
+/// ### Example
+///
+/// Basic usage:
+/// ```rust
+/// use predictive_shuffle::gen_batch_predictive_shuffle_from_seed;
+///
+/// let size = 100;
+/// let batch = 4;
+/// let seed = b"seed phrase".to_vec();
+/// let positions = vec![1,5];
+/// let new_positions = gen_batch_predictive_shuffle_from_seed(size, batch, positions, seed);
+/// assert_eq!(new_positions.get(&1), Some(&96));
+/// assert_eq!(new_positions.get(&5), Some(&90));
+/// ```  
+pub fn gen_batch_predictive_shuffle_from_seed(
+    size: usize,
+    batch: usize,
+    positions: Vec<usize>,
+    seed: Vec<u8>,
+) -> HashMap<usize, usize> {
+    // seed
+    let seed = byte_array(&seed);
+    let seed_int = u64::from_be_bytes(seed);
+
+    // random function
+    let mut rand: fastrand::Rng = fastrand::Rng::new();
+    rand.seed(seed_int);
+
+    // mutable structures
+    let mut vec: Vec<Option<usize>> = vec![None; size];
+    let mut peers = positions.len();
+
+    // fill vec
+    for i in positions {
+        vec[i] = Some(i)
+    }
+
+    // iterate over all items
+    let mut new_map = HashMap::new();
+    let range = size / batch;
+    let mut randoms: Vec<usize> = (0..range).collect();
+    rand.shuffle(randoms.as_mut_slice());
+    for i in (0..size).rev() {
+        let x: usize = if i == 0 {
+            0
+        } else {
+            randoms[i % randoms.len()] % i
+        };
+
+        if let Some(item) = vec[x] {
+            new_map.insert(item, i);
+            peers -= 1;
+            vec[x] = None;
+            if peers == 0 {
+                break;
+            }
+        }
+
+        if let Some(item) = vec[i] {
+            vec[x] = Some(item);
+            vec[i] = None
+        }
+    }
+    new_map
+}
+
+/// Predict Shuffled Position of Items from Seed
+///
+/// ### Example
+///
+/// Basic usage:
+/// ```rust
+/// use predictive_shuffle::gen_crypto_batch_predictive_shuffle;
+///
+/// let size = 100;
+/// let batch = 4;
+/// let positions = vec![1,5];
+/// let new_positions = gen_crypto_batch_predictive_shuffle(size, batch, positions);
+/// ```  
+pub fn gen_crypto_batch_predictive_shuffle(
+    size: usize,
+    batch: usize,
+    positions: Vec<usize>,
+) -> HashMap<usize, usize> {
+    // random function
+    let mut rng = ChaCha20Rng::from_entropy();
+
+    // mutable structures
+    let mut vec: Vec<Option<usize>> = vec![None; size];
+    let mut peers = positions.len();
+
+    // fill vec
+    for i in positions {
+        vec[i] = Some(i)
+    }
+
+    // iterate over all items
+    let mut new_map = HashMap::new();
+    let range = size / batch;
+    let mut randoms: Vec<usize> = vec![];
+    for i in (0..size).rev() {
+        let x: usize = if i > size - range {
+            let x = rng.gen_range(0..=i);
+            randoms.push(x);
+            x
+        } else if i == 0 {
+            0
+        } else {
+            randoms[i % randoms.len()] % i
+        };
+
+        if let Some(item) = vec[x] {
+            new_map.insert(item, i);
+            peers -= 1;
+            vec[x] = None;
+            if peers == 0 {
+                break;
+            }
+        }
+
+        if let Some(item) = vec[i] {
+            vec[x] = Some(item);
+            vec[i] = None
+        }
+    }
+    new_map
+}
+
+/// Predict Shuffled Position of Items from Seed
+///
+/// ### Example
+///
+/// Basic usage:
+/// ```rust
+/// use predictive_shuffle::gen_crypto_batch_predictive_shuffle_from_seed;
+///
+/// let size = 100;
+/// let batch = 4;
+/// let seed = b"seed phrase".to_vec();
+/// let positions = vec![1,5];
+/// let new_positions = gen_crypto_batch_predictive_shuffle_from_seed(size, batch, positions, seed);
+/// assert_eq!(new_positions.get(&1), Some(&7));
+/// assert_eq!(new_positions.get(&5), Some(&93));
+/// ```  
+pub fn gen_crypto_batch_predictive_shuffle_from_seed(
+    size: usize,
+    batch: usize,
+    positions: Vec<usize>,
+    seed: Vec<u8>,
+) -> HashMap<usize, usize> {
+    // seed
+    let seed = byte_array(&seed);
+    let seed_int = u64::from_be_bytes(seed);
+
+    // random function
+    let mut rng = ChaCha20Rng::seed_from_u64(seed_int);
+
+    // mutable structures
+    let mut vec: Vec<Option<usize>> = vec![None; size];
+    let mut peers = positions.len();
+
+    // fill vec
+    for i in positions {
+        vec[i] = Some(i)
+    }
+
+    // iterate over all items
+    let mut new_map = HashMap::new();
+    let range = size / batch;
+    let mut randoms: Vec<usize> = vec![];
+    for i in (0..size).rev() {
+        let x: usize = if i > size - range {
+            let x = rng.gen_range(0..=i);
+            randoms.push(x);
+            x
+        } else if i == 0 {
+            0
+        } else {
+            randoms[i % randoms.len()] % i
+        };
+
+        if let Some(item) = vec[x] {
+            new_map.insert(item, i);
+            peers -= 1;
+            vec[x] = None;
             if peers == 0 {
                 break;
             }
@@ -804,21 +1305,4 @@ pub fn byte_array(v: &Vec<u8>) -> [u8; 8] {
     hash.try_into().unwrap_or_else(|v: Vec<u8>| {
         panic!("Expected a Vec of length {} but it was {}", 8, v.len())
     })
-}
-
-pub fn shuffle_vec(mut vec: Vec<usize>, seed: &Vec<u8>, size: usize) -> Vec<usize> {
-    let seed = byte_array(seed);
-
-    let seed_int = u64::from_be_bytes(seed);
-
-    let mut rand = fastrand::Rng::new();
-    rand.seed(seed_int);
-
-    let mut new_vec = vec![];
-    for i in (0..size).rev() {
-        let x: usize = rand.usize(0..=i);
-
-        new_vec.push(vec.swap_remove(x));
-    }
-    new_vec
 }
