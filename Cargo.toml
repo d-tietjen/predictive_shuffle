@@ -2,8 +2,13 @@
 name = "predictive_shuffle"
 version = "0.1.0"
 edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+description = "A vector shuffling library that allows for in-place shuffling, or predictive sub-item shuffling."
+license = "MIT"
+readme = "README.md"
+keywords = ["shuffle"]
+exclude = [
+    "target/*",
+]
 
 [dependencies]
 phf = { version = "0.11.1", default-features = false }
@@ -14,6 +19,9 @@ fastrand = "2.0.0"
 
 [dev-dependencies]
 criterion = "0.5.1"
+
+[build-dependencies]
+cargo-readme = "3.2.0"
 
 [[bench]]
 name = "benches"
